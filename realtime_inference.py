@@ -53,24 +53,18 @@ def main():
         print(f"Error: Cannot open video {args.video}")
         return
 
-    # Video Writer Setup
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    
-    output_path = Path(args.video).stem + "_output.mp4"
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-    print(f"Processing video... Output will be saved to {output_path}")
+    # 2. Open Video
+    cap = cv2.VideoCapture(args.video)
+    if not cap.isOpened():
+        print(f"Error: Cannot open video {args.video}")
+        return
 
-    frame_count = 0
+    print("Starting Inference... Press 'q' to quit.")
+    
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        frame_count += 1
-        if frame_count % 10 == 0:
-            print(f"Processing frame {frame_count}...", end='\r')
 
         # 3. Detect Objects (YOLO)
         results = yolo(frame, classes=[0], verbose=False) # Class 0 = Person
@@ -106,6 +100,7 @@ def main():
                 color = (0, 255, 0) # Green (Normal)
                 label = f"Normal: {score:.2f}"
 
+                # Our model was trained on Arrest and Fighting as anomalies
                 if score > args.threshold:
                     color = (0, 0, 255) # Red (Anomaly)
                     label = f"ANOMALY: {score:.2f}"
@@ -113,12 +108,14 @@ def main():
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-        # Write Frame
-        out.write(frame)
+        # Show Frame
+        cv2.imshow("Real-Time Anomaly Detection", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
     cap.release()
-    out.release()
-    print(f"\nDone! Output saved to {output_path}")
+    cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
